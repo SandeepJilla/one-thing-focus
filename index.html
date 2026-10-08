@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="One Thing — a to-do list that shows you just one thing at a time.">
+<title>One Thing — focus on one thing at a time</title>
+<style>
+  :root {
+    --paper: #f7f3ea;
+    --ink: #1b1a16;
+    --muted: #8b8471;
+    --card: #fffdf8;
+    --line: #e7e0d0;
+    --green: #2f5d3a;
+    --green-dark: #234a2d;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    background-image: radial-gradient(circle at 50% 0%, #fffdf6 0%, var(--paper) 60%);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 20px 64px;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 620px; }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 28px;
+  }
+  .brand {
+    font-size: 13px;
+    letter-spacing: 0.22em;
+    font-weight: 700;
+  }
+  .brand em { font-style: normal; color: var(--green); }
+  #date { font-size: 13px; color: var(--muted); }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+
+  #focus-wrap { perspective: 800px; }
+  #focus-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 32px rgba(27, 26, 22, 0.08);
+    padding: 40px 32px 32px;
+    text-align: center;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+  }
+  #focus-card.leaving { transform: translateY(14px) scale(0.98); opacity: 0; }
+  #focus-card.entering { animation: rise 0.4s ease; }
+  @keyframes rise {
+    from { transform: translateY(14px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  #focus-text {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.7rem, 5.5vw, 2.6rem);
+    line-height: 1.25;
+    margin: 0 0 8px;
+    overflow-wrap: break-word;
+  }
+  #focus-count { font-size: 13px; color: var(--muted); margin-bottom: 26px; }
+
+  .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  button { font-family: inherit; cursor: pointer; }
+  .btn-done {
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 14px 34px;
+    font-size: 16px;
+    font-weight: 700;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-done:hover { background: var(--green-dark); }
+  .btn-done:active { transform: scale(0.97); }
+  .btn-ghost {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 15px;
+    padding: 14px 10px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .btn-ghost:hover { color: var(--ink); }
+
+  #empty-state {
+    text-align: center;
+    padding: 56px 24px;
+    border: 1.5px dashed var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+  }
+  #empty-state .big {
+    font-family: Georgia, serif;
+    font-size: 1.8rem;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+
+  section.block { margin-top: 40px; }
+  .block-title {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .block-title button {
+    background: none; border: none; color: var(--muted);
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .block-title button:hover { color: var(--ink); }
+
+  #queue { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  #queue li {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+  }
+  #queue li .num {
+    flex: none;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #queue li .txt { flex: 1; overflow-wrap: anywhere; }
+  #queue li .promote {
+    background: none; border: 1px solid var(--line); border-radius: 999px;
+    font-size: 12px; padding: 6px 12px; color: var(--green); font-weight: 600;
+    white-space: nowrap;
+  }
+  #queue li .promote:hover { border-color: var(--green); }
+  #queue li .del {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; line-height: 1; padding: 4px 6px;
+  }
+  #queue li .del:hover { color: #b3261e; }
+
+  #add-form { display: flex; gap: 8px; margin-top: 12px; }
+  #add-input {
+    flex: 1;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--card);
+    padding: 13px 18px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+  }
+  #add-input:focus { border-color: var(--green); }
+  #add-form button {
+    border: none; border-radius: 999px;
+    background: var(--ink); color: #fff;
+    padding: 0 22px; font-size: 15px; font-weight: 600;
+  }
+  #add-form button:active { transform: scale(0.97); }
+
+  #done-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  #done-list li {
+    font-size: 14px; color: var(--muted);
+    display: flex; gap: 10px; align-items: baseline;
+    padding: 8px 2px;
+    border-bottom: 1px dotted var(--line);
+  }
+  #done-list li .tick { color: var(--green); font-weight: 700; }
+  #done-list li time { margin-left: auto; font-size: 12px; white-space: nowrap; }
+  #done-list li .txt { text-decoration: line-through; overflow-wrap: anywhere; }
+
+  footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff;
+    padding: 12px 22px; border-radius: 999px; font-size: 14px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    max-width: 90vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    #focus-card { padding: 32px 22px 26px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">ONE <em>THING</em></div>
+    <div id="date"></div>
+  </header>
+
+  <div class="eyebrow" id="focus-eyebrow">RIGHT NOW, JUST ONE THING</div>
+  <div id="focus-wrap">
+    <div id="focus-card" hidden>
+      <p id="focus-text"></p>
+      <div id="focus-count"></div>
+      <div class="actions">
+        <button class="btn-done" id="btn-done" type="button">Done</button>
+        <button class="btn-ghost" id="btn-later" type="button">Not now &rarr;</button>
+      </div>
+    </div>
+    <div id="empty-state" hidden>
+      <div class="big" id="empty-title">All clear.</div>
+      <div id="empty-sub">Nothing on your plate. Add the one thing below.</div>
+    </div>
+  </div>
+
+  <section class="block" id="queue-block" hidden>
+    <div class="block-title"><span>UP NEXT</span></div>
+    <ul id="queue"></ul>
+    <form id="add-form" autocomplete="off">
+      <input id="add-input" type="text" placeholder="Add one more thing&hellip;" maxlength="200" aria-label="Add a task">
+      <button type="submit">Add</button>
+    </form>
+  </section>
+
+  <section class="block" id="done-block" hidden>
+    <div class="block-title">
+      <span id="done-title">DONE TODAY</span>
+      <button id="btn-clear-done" type="button">Clear</button>
+    </div>
+    <ul id="done-list"></ul>
+  </section>
+
+  <footer>one thing at a time</footer>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "one-thing-focus-v1";
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var s = JSON.parse(raw);
+        if (s && Array.isArray(s.active) && Array.isArray(s.done)) return s;
+      }
+    } catch (e) {}
+    return { active: [], done: [] };
+  }
+  function save(state) {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function todayKey(d) {
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function fmtTime(ts) {
+    var d = new Date(ts), h = d.getHours(), m = d.getMinutes();
+    var ap = h >= 12 ? "pm" : "am";
+    h = h % 12 || 12;
+    return h + ":" + (m < 10 ? "0" + m : m) + ap;
+  }
+
+  var state = load();
+
+  var dateEl = document.getElementById("date");
+  var eyebrowEl = document.getElementById("focus-eyebrow");
+  var cardEl = document.getElementById("focus-card");
+  var focusTextEl = document.getElementById("focus-text");
+  var focusCountEl = document.getElementById("focus-count");
+  var emptyEl = document.getElementById("empty-state");
+  var emptyTitleEl = document.getElementById("empty-title");
+  var emptySubEl = document.getElementById("empty-sub");
+  var queueBlockEl = document.getElementById("queue-block");
+  var queueEl = document.getElementById("queue");
+  var doneBlockEl = document.getElementById("done-block");
+  var doneTitleEl = document.getElementById("done-title");
+  var doneListEl = document.getElementById("done-list");
+  var addForm = document.getElementById("add-form");
+  var addInput = document.getElementById("add-input");
+  var toastEl = document.getElementById("toast");
+  var toastTimer = null;
+
+  dateEl.textContent = new Date().toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric"
+  });
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toastEl.classList.remove("show");
+    }, 2200);
+  }
+
+  function render() {
+    var active = state.active;
+    var doneToday = state.done.filter(function (t) {
+      return todayKey(new Date(t.doneAt)) === todayKey(new Date());
+    });
+
+    // Focus card vs empty state
+    if (active.length > 0) {
+      emptyEl.hidden = true;
+      cardEl.hidden = false;
+      focusTextEl.textContent = active[0].text;
+      var remaining = active.length - 1;
+      focusCountEl.textContent =
+        remaining === 0
+          ? "the last one — nice"
+          : remaining + " more waiting patiently";
+      eyebrowEl.textContent = "RIGHT NOW, JUST ONE THING";
+    } else {
+      cardEl.hidden = true;
+      emptyEl.hidden = false;
+      if (doneToday.length > 0) {
+        emptyTitleEl.textContent = "Done for today.";
+        emptySubEl.textContent = "Everything is finished. Enjoy the quiet.";
+      } else {
+        emptyTitleEl.textContent = "All clear.";
+        emptySubEl.textContent = "Nothing on your plate. Add the one thing below.";
+      }
+      eyebrowEl.textContent = "ONE THING AT A TIME";
+    }
+
+    // Queue
+    var rest = active.slice(1);
+    queueBlockEl.hidden = false;
+    queueEl.innerHTML = "";
+    rest.forEach(function (task, i) {
+      var li = document.createElement("li");
+
+      var num = document.createElement("span");
+      num.className = "num";
+      num.textContent = String(i + 2);
+      li.appendChild(num);
+
+      var txt = document.createElement("span");
+      txt.className = "txt";
+      txt.textContent = task.text;
+      li.appendChild(txt);
+
+      var promote = document.createElement("button");
+      promote.type = "button";
+      promote.className = "promote";
+      promote.textContent = "Focus this";
+      promote.setAttribute("aria-label", "Make this the current focus");
+      promote.addEventListener("click", function () { promoteToFocus(task.id); });
+      li.appendChild(promote);
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = "\u00d7";
+      del.setAttribute("aria-label", "Delete task");
+      del.addEventListener("click", function () { removeTask(task.id); });
+      li.appendChild(del);
+
+      queueEl.appendChild(li);
+    });
+
+    // Done today
+    if (doneToday.length > 0) {
+      doneBlockEl.hidden = false;
+      doneTitleEl.textContent = "DONE TODAY (" + doneToday.length + ")";
+      doneListEl.innerHTML = "";
+      doneToday
+        .slice()
+        .reverse()
+        .forEach(function (task) {
+          var li = document.createElement("li");
+          var tick = document.createElement("span");
+          tick.className = "tick";
+          tick.textContent = "\u2713";
+          li.appendChild(tick);
+          var txt = document.createElement("span");
+          txt.className = "txt";
+          txt.textContent = task.text;
+          li.appendChild(txt);
+          var time = document.createElement("time");
+          time.textContent = fmtTime(task.doneAt);
+          li.appendChild(time);
+          doneListEl.appendChild(li);
+        });
+    } else {
+      doneBlockEl.hidden = true;
+    }
+  }
+
+  function animateSwap(fn) {
+    if (cardEl.hidden) { fn(); render(); return; }
+    cardEl.classList.add("leaving");
+    setTimeout(function () {
+      fn();
+      render();
+      cardEl.classList.remove("leaving");
+      cardEl.classList.add("entering");
+      setTimeout(function () { cardEl.classList.remove("entering"); }, 450);
+    }, 320);
+  }
+
+  function addTask(text) {
+    text = text.trim();
+    if (!text) return;
+    state.active.push({ id: uid(), text: text, createdAt: Date.now() });
+    save(state);
+    render();
+  }
+
+  function completeFocus() {
+    if (state.active.length === 0) return;
+    var task = state.active[0];
+    animateSwap(function () {
+      state.active.shift();
+      state.done.push({ id: task.id, text: task.text, doneAt: Date.now() });
+      // Keep the done log bounded.
+      if (state.done.length > 200) state.done = state.done.slice(-200);
+      save(state);
+    });
+    var left = state.active.length - 1;
+    toast(left > 0 ? "Done. One down." : "Done. That's everything.");
+  }
+
+  function deferFocus() {
+    if (state.active.length < 2) return;
+    animateSwap(function () {
+      var task = state.active.shift();
+      state.active.push(task);
+      save(state);
+    });
+  }
+
+  function promoteToFocus(id) {
+    var idx = -1;
+    for (var i = 0; i < state.active.length; i++) {
+      if (state.active[i].id === id) { idx = i; break; }
+    }
+    if (idx < 1) return;
+    animateSwap(function () {
+      var task = state.active.splice(idx, 1)[0];
+      state.active.unshift(task);
+      save(state);
+    });
+  }
+
+  function removeTask(id) {
+    state.active = state.active.filter(function (t) { return t.id !== id; });
+    save(state);
+    render();
+  }
+
+  document.getElementById("btn-done").addEventListener("click", completeFocus);
+  document.getElementById("btn-later").addEventListener("click", deferFocus);
+  document.getElementById("btn-clear-done").addEventListener("click", function () {
+    state.done = [];
+    save(state);
+    render();
+    toast("Cleared today's done list.");
+  });
+
+  addForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    addTask(addInput.value);
+    addInput.value = "";
+    addInput.focus();
+  });
+
+  // Seed with a gentle example on first run so the idea clicks instantly.
+  if (state.active.length === 0 && state.done.length === 0) {
+    try {
+      if (!localStorage.getItem(KEY + "-seeded")) {
+        state.active = [
+          { id: uid(), text: "Try me: tap Done when this is finished", createdAt: Date.now() }
+        ];
+        save(state);
+        localStorage.setItem(KEY + "-seeded", "1");
+      }
+    } catch (e) {}
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
